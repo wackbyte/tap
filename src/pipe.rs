@@ -229,6 +229,84 @@ pub trait Pipe {
 	{
 		func(DerefMut::deref_mut(self))
 	}
+
+	/// If `cond` is true, passes `self` into the pipe function.
+	/// Otherwise, returns `self` unmodified.
+	///
+	/// Note that, unlike `.pipe()`, this method is *not* generic over its return type.
+	///
+	/// # Examples
+	///
+	/// `.pipe_if()` can be quite useful in conjunction with the builder pattern:
+	///
+	/// ```rust
+	/// # struct Builder;
+	/// # impl Builder {
+	/// #   fn new() -> Self { Self }
+	/// #   fn foo(self) -> Self { self }
+	/// #   fn bar(self) -> Self { self }
+	/// #   fn baz(self) -> Self { self }
+	/// #   fn quux(self) -> Self { self }
+	/// #   fn build(self) {}
+	/// # }
+	/// # let bazable = true;
+	/// use tap::pipe::Pipe;
+	///
+	/// Builder::new()
+	///   .foo()
+	///   .bar()
+	///   .pipe_if(bazable, |it| it.baz())
+	///   .quux()
+	///   .build()
+	/// ```
+	///
+	/// This is far more concise than the alternative:
+	///
+	/// ```rust
+	/// # struct Builder;
+	/// # impl Builder {
+	/// #   fn new() -> Self { Self }
+	/// #   fn foo(self) -> Self { self }
+	/// #   fn bar(self) -> Self { self }
+	/// #   fn baz(self) -> Self { self }
+	/// #   fn quux(self) -> Self { self }
+	/// #   fn build(self) {}
+	/// # }
+	/// # let bazable = true;
+	/// use tap::pipe::Pipe;
+	///
+	/// // With `.pipe()`:
+	/// Builder::new()
+	///   .foo()
+	///   .bar()
+	///   .pipe(|it| if bazable {
+	///     it.baz()
+	///   } else {
+	///     it
+	///   })
+	///   .quux()
+	///   .build()
+	/// # ;
+	///
+	/// // Without any plumbing at all:
+	/// let mut builder = Builder::new().foo().bar();
+	/// if bazable {
+	///   builder = builder.baz();
+	/// }
+	/// builder.quux().build()
+	/// # ;
+	/// ```
+	#[inline(always)]
+	fn pipe_if(self, cond: bool, func: impl FnOnce(Self) -> Self) -> Self
+	where
+		Self: Sized,
+	{
+		if cond {
+			func(self)
+		} else {
+			self
+		}
+	}
 }
 
 impl<T> Pipe for T where T: ?Sized {}
